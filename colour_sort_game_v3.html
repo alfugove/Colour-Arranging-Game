@@ -1,0 +1,322 @@
+
+<h2 class="sr-only">Colour Sort — arrange same colours into bottles by clicking to pour or using the manual pour panel. Add extra empty bottles when stuck.</h2>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+#G{padding:1rem 0;font-family:var(--font-sans);}
+#toprow{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:8px;flex-wrap:wrap;}
+#toprow h1{font-size:20px;font-weight:500;color:var(--color-text-primary);}
+#toprow p{font-size:12px;color:var(--color-text-secondary);margin-top:3px;}
+#stats{display:flex;gap:8px;}
+.sc{background:var(--color-background-secondary);border-radius:8px;padding:7px 14px;text-align:center;}
+.sl{font-size:11px;color:var(--color-text-secondary);}
+.sv{font-size:18px;font-weight:500;color:var(--color-text-primary);}
+#toolbar{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px;align-items:center;}
+#toolbar select{padding:7px 11px;border-radius:8px;border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);font-size:13px;color:var(--color-text-primary);cursor:pointer;}
+#toolbar button{padding:7px 13px;border-radius:8px;border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);font-size:13px;color:var(--color-text-primary);cursor:pointer;}
+#toolbar button:hover{background:var(--color-background-secondary);}
+#toolbar button:active{transform:scale(0.97);}
+#btn-add{border-color:var(--color-border-success);color:var(--color-text-success);}
+#msgbar{text-align:center;font-size:13px;font-weight:500;min-height:30px;padding:5px 10px;border-radius:8px;margin-bottom:8px;color:var(--color-text-primary);transition:background 0.18s,color 0.18s;}
+#msgbar.ok{background:var(--color-background-success);color:var(--color-text-success);}
+#msgbar.err{background:var(--color-background-danger);color:var(--color-text-danger);}
+#msgbar.info{background:var(--color-background-info);color:var(--color-text-info);}
+#area{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;padding:6px 0 10px;}
+.tw{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;user-select:none;}
+.bottle{width:52px;height:160px;border-radius:6px 6px 26px 26px;border:1.5px solid var(--color-border-secondary);background:var(--color-background-secondary);display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;position:relative;transition:outline 0.1s,border-color 0.15s;}
+.tw.sel .bottle{outline:3px solid #378ADD;outline-offset:3px;}
+.tw.hf .bottle{outline:3px solid #EF9F27;outline-offset:3px;}
+.tw.ht .bottle{outline:3px dashed #EF9F27;outline-offset:3px;}
+.bottle.done{border-color:#1D9E75;border-width:2px;}
+.bottle.xtra{border-style:dashed;border-color:var(--color-border-tertiary);}
+.seg{width:100%;flex-shrink:0;}
+.tlbl{font-size:11px;color:var(--color-text-tertiary);}
+.xtag{font-size:10px;color:var(--color-text-success);font-weight:500;letter-spacing:0.3px;}
+
+#pour-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:12px;padding:14px 16px;margin-top:8px;}
+#pour-card h3{font-size:14px;font-weight:500;color:var(--color-text-primary);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+#pour-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+#pour-row label{font-size:13px;color:var(--color-text-secondary);}
+#pour-row select{padding:6px 10px;border-radius:8px;border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);font-size:13px;color:var(--color-text-primary);cursor:pointer;}
+#pour-go{padding:7px 18px;border-radius:8px;border:0.5px solid var(--color-border-success);background:var(--color-background-success);color:var(--color-text-success);font-size:13px;cursor:pointer;font-weight:500;}
+#pour-go:hover{opacity:0.85;}
+#win{display:none;background:var(--color-background-secondary);border:0.5px solid var(--color-border-secondary);border-radius:12px;padding:16px;text-align:center;margin-top:10px;}
+#win h2{font-size:18px;font-weight:500;margin-bottom:6px;color:var(--color-text-primary);}
+#win p{font-size:13px;color:var(--color-text-secondary);}
+#win button{margin-top:10px;padding:7px 18px;border-radius:8px;border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);font-size:13px;cursor:pointer;color:var(--color-text-primary);}
+</style>
+
+<div id="G">
+  <div id="toprow">
+    <div>
+      <h1>Colour Sort</h1>
+      <p>Fill each bottle with one colour to win</p>
+    </div>
+    <div id="stats">
+      <div class="sc"><div class="sl">Moves</div><div class="sv" id="s-mv">0</div></div>
+      <div class="sc"><div class="sl">Extras</div><div class="sv" id="s-ex">0</div></div>
+      <div class="sc"><div class="sl">Best</div><div class="sv" id="s-bv">—</div></div>
+    </div>
+  </div>
+
+  <div id="toolbar">
+    <select id="dif">
+      <option value="4">Easy — 4 colours</option>
+      <option value="5" selected>Medium — 5 colours</option>
+      <option value="6">Hard — 6 colours</option>
+      <option value="7">Expert — 7 colours</option>
+    </select>
+    <button onclick="newGame()"><i class="ti ti-refresh" aria-hidden="true"></i> New game</button>
+    <button onclick="undoMove()"><i class="ti ti-arrow-left" aria-hidden="true"></i> Undo</button>
+    <button onclick="doHint()"><i class="ti ti-bulb" aria-hidden="true"></i> Hint</button>
+    <button id="btn-add" onclick="addBottle()"><i class="ti ti-plus" aria-hidden="true"></i> Add bottle</button>
+  </div>
+
+  <div id="msgbar">Click any bottle to pick up its top colour, then click another to pour.</div>
+  <div id="area"></div>
+
+  <div id="pour-card">
+    <h3><i class="ti ti-droplet" aria-hidden="true" style="font-size:15px;"></i> Manual pour — pick source &amp; destination</h3>
+    <div id="pour-row">
+      <label>From</label>
+      <select id="pf"></select>
+      <label>To</label>
+      <select id="pt"></select>
+      <button id="pour-go" onclick="manualPour()">Pour now</button>
+    </div>
+  </div>
+
+  <div id="win">
+    <h2 id="win-title"></h2>
+    <p id="win-sub"></p>
+    <button onclick="newGame()">Play again</button>
+  </div>
+</div>
+
+<script>
+const PALETTE=[
+  {fill:'#D85A30',shade:'#993C1D'},
+  {fill:'#378ADD',shade:'#185FA5'},
+  {fill:'#1D9E75',shade:'#0F6E56'},
+  {fill:'#7F77DD',shade:'#534AB7'},
+  {fill:'#EF9F27',shade:'#BA7517'},
+  {fill:'#D4537E',shade:'#993556'},
+  {fill:'#639922',shade:'#3B6D11'},
+  {fill:'#E24B4A',shade:'#A32D2D'},
+];
+const CAP=4;
+let T=[],sel=null,moves=0,extras=0,hist=[],best={};
+
+function nc(){return parseInt(document.getElementById('dif').value);}
+function shuf(a){for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function topOf(t){return t.length?t[t.length-1]:null;}
+
+function newGame(){
+  const n=nc();
+  let balls=[];
+  for(let c=0;c<n;c++)for(let i=0;i<CAP;i++)balls.push(c);
+  shuf(balls);
+  T=[];
+  for(let i=0;i<n;i++)T.push({b:balls.splice(0,CAP),x:false});
+  T.push({b:[],x:false});
+  T.push({b:[],x:false});
+  sel=null;moves=0;extras=0;hist=[];
+  document.getElementById('win').style.display='none';
+  document.getElementById('s-mv').textContent='0';
+  document.getElementById('s-ex').textContent='0';
+  refreshBest();
+  msg('Click a bottle to select, then click another to pour.','');
+  render();
+}
+
+function refreshBest(){
+  const k=nc();
+  document.getElementById('s-bv').textContent=best[k]||'—';
+}
+
+function canPour(fi,ti){
+  if(fi===ti)return false;
+  const f=T[fi],t=T[ti];
+  if(!f.b.length)return false;
+  if(t.b.length>=CAP)return false;
+  return t.b.length===0||topOf(t.b)===topOf(f.b);
+}
+
+function snap(){return T.map(t=>({b:[...t.b],x:t.x}));}
+
+function doPour(fi,ti){
+  hist.push(snap());
+  const c=topOf(T[fi].b);
+  while(T[fi].b.length&&topOf(T[fi].b)===c&&T[ti].b.length<CAP){
+    T[ti].b.push(T[fi].b.pop());
+  }
+  moves++;
+  document.getElementById('s-mv').textContent=moves;
+}
+
+function isDone(t){return t.b.length===CAP&&t.b.every(c=>c===t.b[0]);}
+
+function checkWin(){
+  const n=nc();
+  const filled=T.filter(t=>t.b.length>0);
+  return filled.length===n&&filled.every(t=>isDone(t));
+}
+
+function msg(m,type){
+  const el=document.getElementById('msgbar');
+  el.textContent=m;
+  el.className=type||'';
+}
+
+function handleClick(idx){
+  if(sel===null){
+    if(!T[idx].b.length){msg('That bottle is empty — pick another.','err');return;}
+    sel=idx;
+    msg('Colour selected! Now click a destination bottle.','info');
+    render();return;
+  }
+  if(sel===idx){sel=null;msg('Deselected. Pick a bottle to start.','');render();return;}
+  if(!canPour(sel,idx)){
+    const t=T[idx];
+    const why=t.b.length>=CAP?'Bottle is full!':t.b.length>0?'Colours don\'t match!':'Cannot pour here.';
+    msg(why+' Try a different bottle.','err');
+    return;
+  }
+  doPour(sel,idx);
+  sel=null;
+  onAfterPour();
+}
+
+function onAfterPour(){
+  if(checkWin()){
+    const k=nc();
+    if(!best[k]||moves<best[k])best[k]=moves;
+    refreshBest();
+    document.getElementById('win-title').textContent='All sorted!';
+    document.getElementById('win-sub').textContent=`Solved in ${moves} move${moves!==1?'s':''} using ${extras} extra bottle${extras!==1?'s':''}.`;
+    document.getElementById('win').style.display='block';
+    msg('You win! Every colour is home.','ok');
+  } else {
+    msg('Poured! Keep going.','');
+  }
+  render();
+}
+
+function undoMove(){
+  if(!hist.length){msg('Nothing to undo!','err');return;}
+  const prev=hist.pop();
+  const prevExtras=prev.filter(t=>t.x).length;
+  const curExtras=T.filter(t=>t.x).length;
+  extras=Math.max(0,extras-(curExtras-prevExtras));
+  T=prev;sel=null;
+  moves=Math.max(0,moves-1);
+  document.getElementById('s-mv').textContent=moves;
+  document.getElementById('s-ex').textContent=extras;
+  document.getElementById('win').style.display='none';
+  msg('Move undone.','info');
+  render();
+}
+
+function addBottle(){
+  if(T.length>=14){msg('Maximum 14 bottles reached!','err');return;}
+  hist.push(snap());
+  T.push({b:[],x:true});
+  extras++;
+  document.getElementById('s-ex').textContent=extras;
+  msg('Extra bottle added — use it wisely!','ok');
+  render();
+}
+
+function doHint(){
+  let hf=-1,ht=-1;
+  for(let f=0;f<T.length&&hf===-1;f++){
+    for(let t=0;t<T.length;t++){
+      if(canPour(f,t)&&T[t].b.length>0&&topOf(T[t].b)===topOf(T[f].b)){hf=f;ht=t;break;}
+    }
+  }
+  if(hf===-1){
+    for(let f=0;f<T.length&&hf===-1;f++){
+      for(let t=0;t<T.length;t++){
+        if(canPour(f,t)){hf=f;ht=t;break;}
+      }
+    }
+  }
+  if(hf===-1){msg('No valid moves — try undoing or add a bottle!','err');return;}
+  msg(`Hint: pour bottle ${hf+1} into bottle ${ht+1}.`,'info');
+  render(hf,ht);
+}
+
+function manualPour(){
+  const fi=parseInt(document.getElementById('pf').value);
+  const ti=parseInt(document.getElementById('pt').value);
+  if(isNaN(fi)||isNaN(ti)){msg('Select both bottles in the pour panel.','err');return;}
+  if(!canPour(fi,ti)){
+    const why=fi===ti?'Same bottle!':T[ti].b.length>=CAP?'Destination full!':T[ti].b.length>0?'Colours don\'t match!':'Cannot pour.';
+    msg(why,'err');return;
+  }
+  sel=null;
+  doPour(fi,ti);
+  onAfterPour();
+}
+
+function buildDropdowns(){
+  const pf=document.getElementById('pf');
+  const pt=document.getElementById('pt');
+  const sv=pf.value,sv2=pt.value;
+  pf.innerHTML='';pt.innerHTML='';
+  T.forEach((t,i)=>{
+    const top=t.b.length?PALETTE[topOf(t.b)].fill:'—';
+    const lbl=`Bottle ${i+1}${t.x?' (extra)':''}  [${t.b.length}/${CAP}]`;
+    [pf,pt].forEach(sel=>{
+      const o=document.createElement('option');
+      o.value=i;o.textContent=lbl;sel.appendChild(o);
+    });
+  });
+  if(pf.querySelector(`[value="${sv}"]`))pf.value=sv;
+  if(pt.querySelector(`[value="${sv2}"]`))pt.value=sv2;
+}
+
+function render(hf=-1,ht=-1){
+  const area=document.getElementById('area');
+  area.innerHTML='';
+  const segH=Math.floor(160/CAP);
+  T.forEach((tube,idx)=>{
+    const tw=document.createElement('div');
+    tw.className='tw';
+    if(idx===sel)tw.classList.add('sel');
+    if(idx===hf)tw.classList.add('hf');
+    if(idx===ht)tw.classList.add('ht');
+
+    const bot=document.createElement('div');
+    bot.className='bottle';
+    if(isDone(tube))bot.classList.add('done');
+    if(tube.x&&tube.b.length===0)bot.classList.add('xtra');
+
+    for(let i=0;i<tube.b.length;i++){
+      const ci=tube.b[i];
+      const seg=document.createElement('div');
+      seg.className='seg';
+      seg.style.cssText=`height:${segH}px;background:${PALETTE[ci].fill};border-top:1.5px solid ${PALETTE[ci].shade};`;
+      bot.appendChild(seg);
+    }
+
+    const lbl=document.createElement('div');
+    lbl.className='tlbl';
+    lbl.textContent=`#${idx+1}`;
+
+    tw.appendChild(bot);
+    if(tube.x){
+      const xt=document.createElement('div');
+      xt.className='xtag';xt.textContent='extra';
+      tw.appendChild(xt);
+    }
+    tw.appendChild(lbl);
+    tw.addEventListener('click',()=>handleClick(idx));
+    area.appendChild(tw);
+  });
+  buildDropdowns();
+}
+
+document.getElementById('dif').addEventListener('change',newGame);
+newGame();
+</script>
